@@ -1,8 +1,12 @@
 require 'rest-client'
 require 'sinatra'
+require "sinatra/activerecord"
 require 'json'
 
 Dir["app/models/*.rb"].each {|file| require_relative file }
+
+set :database, {adapter: 'postgresql',  encoding: 'utf8', database: 'review-q_dev',
+                pool: 2, username: ENV['DB_USERNAME'], password: ENV['DB_PASSWORD']}
 
 def initialize
   super()
