@@ -23,6 +23,17 @@ class Item
     end
   end
 
+  def mark_complete(by_user_id)
+    options = {
+      token: @team.bot["bot_access_token"],
+      channel: @user["id"],
+      text: "#{@archive_link} was marked as complete by <@#{by_user_id}>",
+      as_user: true
+    }
+
+    res = RestClient.post 'https://slack.com/api/chat.postMessage', options, content_type: :json
+  end
+
   def create_archive_link
     options = { token: @team.bot["bot_access_token"] }
     res = RestClient.post 'https://slack.com/api/team.info', options, content_type: :json

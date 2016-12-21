@@ -1,6 +1,8 @@
 class Queue
   attr_accessor :items
 
+  PER_PAGE = 3
+
   def initialize
     @items = []
   end
@@ -9,21 +11,38 @@ class Queue
     @items << item
   end
 
+  def remove(item)
+    @items.delete(item)
+  end
+
+  def find(ts)
+    @items.select { |i| i.ts == ts }
+  end
+
   def build_message_attachments(first)
-    last = first + 2
-    last = @items.length if last > @items.length
+    return [] if @items.empty?
+    last = first + (PER_PAGE - 1)
+    last = @items.length - 1 if last >= @items.length
     p "#{first}, #{last}"
     attachments = @items[first..last].inject([]) { |a, i| a << {
       author_name: i.user['profile']['first_name'] + " " + i.user['profile']["last_name"],
       author_icon: i.user['profile']['image_24'],
       text: i.text,
       footer: "<#{i.archive_link}|Archive link>",
-      ts: i.ts
+      ts: i.ts,
+      fallback: "FALLBACK",
+      callback_id: "complete_item/" + channel + "/" + first.to_s,
+      actions: [{
+        name: "complete",
+        text: "Mark as done",
+        type: "button",
+        value: i.ts
+      }]
     } }
 
     buttons = []
-    buttons << ["next", last + 1] if last != @items.length
-    buttons << ["previous", first - 3] if first != 0
+    buttons << ["next", last + 1] if last != @items.length - 1
+    buttons << ["previous", first - PER_PAGE] if first != 0
 
     actions = []
     buttons.each do |b|

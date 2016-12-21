@@ -62,7 +62,7 @@ post '/events' do
                     name: "all",
                     text: "View all",
                     type: "button",
-                    value: "all"
+                    value: "0"
                 }
             ]
           }])
@@ -86,20 +86,21 @@ post '/interactive-button' do
 
   @team = @teams.find(data.team.id, data.user.id)
   callback_ids = data.callback_id.split('/')
+
   case callback_ids[0]
-  when 'all'
+  when "all", "pagination"
     q = @queues.find(callback_ids[1])
+
     if q
-      attachments = q.build_message_attachments(0)
+      page_item_index = data.actions[0]["value"].to_i
+      attachments = q.build_message_attachments(page_item_index)
 
       options = {
-        response_type: "ephemeral",
+        replace_original: true,
         text: "Here are your messages",
-        replace_original: false,
         attachments: attachments
       }
 
-      res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
     else
       options = {
         response_type: "ephemeral",
@@ -107,27 +108,38 @@ post '/interactive-button' do
         text: "Sorry, that didn't work. Please try again."
       }
 
-      res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
     end
+    res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
 
-  when "pagination"
+  when "complete_item"
     q = @queues.find(callback_ids[1])
-    if q
-      val = data.actions[0]["value"].to_i
-      attachments = q.build_message_attachments(val)
 
+    if q
+      item = q.find(data.actions[0]["value"])
+      if item
+        item[0].mark_complete(data.user["id"])
+        q.remove(item[0])
+        attachments = q.build_message_attachments(callback_ids[2].to_i)
+        message = attachments.empty? ? "There are no messages in the queue" : "Here are your messages"
+
+        options = {
+          replace_original: true,
+          text: message,
+          attachments: attachments
+        }
+      end
+
+    else
       options = {
         response_type: "ephemeral",
-        text: "Here are your messages",
-        replace_original: true,
-        attachments: attachments
+        replace_original: false,
+        text: "Sorry, that didn't work. Please try again."
       }
 
-      res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
     end
+    res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
+
   end
-
-
 
   return 200
 end
