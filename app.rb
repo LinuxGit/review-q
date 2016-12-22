@@ -6,15 +6,7 @@ require 'json'
 Dir["app/models/*.rb"].each {|file| require_relative file }
 
 class MyApp < Sinatra::Base
-
-  set :database, {adapter: 'postgresql',  encoding: 'utf8', database: 'review-q_dev',
-                  pool: 2, username: ENV['DB_USERNAME'], password: ENV['DB_PASSWORD']}
-
-  def initialize
-    super()
-    @teams = Teams.new
-    @queues = Queues.new
-  end
+  register Sinatra::ActiveRecordExtension
 
   get '/' do
     erb :index
@@ -30,9 +22,11 @@ class MyApp < Sinatra::Base
       }
 
       res = RestClient.post 'https://slack.com/api/oauth.access', options, content_type: :json
-      @teams.add!(JSON.parse(res))
-
-      @teams.all.to_s
+      if Team.add_from_json(JSON.parse(res))
+        "Bot successfully installed"
+      else
+        "Oh no :( Something went wrong. The error message is: #{JSON.parse(res)['error']}. Hope that means something to you."
+      end
     end
   end
 
@@ -49,17 +43,16 @@ class MyApp < Sinatra::Base
 
     when "event_callback"
       event = data.event
-      @team = @teams.find(data.team_id, event.user)
-      if event.text && event.text.match(/<@#{@team.bot["bot_user_id"]}>/)
+      @team = Team.find_by(slack_id: data.team_id)
+      if @team && event.text && event.text.match(/<@#{@team.bot_slack_id}>/)
         t = Thread.new {
-          item = Item.new(event, @team)
-          q = @queues.find_or_add(event.channel)
-          q.add item
+
+          item = @team.create_channel_and_item_from_event(event)
 
           options = {
-            token: @team.bot["bot_access_token"],
-            channel: event.channel,
-            text: "#{q.items.length} items in the queue",
+            token: @team.bot_token,
+            channel: item.channel.slack_id,
+            text: "#{item.channel.items.count} items in the queue",
             attachments: JSON.generate([{
               fallback: "FALLBACK",
               callback_id: "all/" + event.channel,
@@ -90,16 +83,16 @@ class MyApp < Sinatra::Base
 
     halt 500 if data.token != ENV['VERIFICATION_TOKEN']
 
-    @team = @teams.find(data.team.id, data.user.id)
+    @team = Team.find_by(slack_id: data.team.id)
     callback_ids = data.callback_id.split('/')
 
     case callback_ids[0]
     when "all", "pagination"
-      q = @queues.find(callback_ids[1])
+      channel = Channel.find_by(slack_id: callback_ids[1])
 
-      if q
+      if channel
         page_item_index = data.actions[0]["value"].to_i
-        attachments = q.build_message_attachments(page_item_index)
+        attachments = channel.build_message_attachments(page_item_index)
 
         options = {
           replace_original: true,
@@ -118,14 +111,14 @@ class MyApp < Sinatra::Base
       res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
 
     when "complete_item"
-      q = @queues.find(callback_ids[1])
+      channel = Channel.find_by(slack_id: callback_ids[1])
 
-      if q
-        item = q.find(data.actions[0]["value"])
+      if channel
+        item = Item.find_by(ts: data.actions[0]["value"])
         if item
-          item[0].mark_complete(data.user["id"])
-          q.remove(item[0])
-          attachments = q.build_message_attachments(callback_ids[2].to_i)
+          item.mark_complete(data.user["id"])
+          item.destroy
+          attachments = channel.build_message_attachments(callback_ids[2].to_i)
           message = attachments.empty? ? "There are no messages in the queue" : "Here are your messages"
 
           options = {
