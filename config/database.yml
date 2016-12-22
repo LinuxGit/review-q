@@ -1,0 +1,8 @@
+development:
+  adapter: postgresql
+  encoding: utf8
+  pool: 2
+
+production:
+  adapter: postgresql
+  encoding: utf8
