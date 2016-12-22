@@ -5,7 +5,7 @@ class Team < ActiveRecord::Base
   def self.add_from_json(json_auth_res)
     p json_auth_res
     if json_auth_res["ok"]
-      team = Team.find_or_create_by(slack_id: json_auth_res["team_id"])
+      team = Team.find_or_initialize_by(slack_id: json_auth_res["team_id"])
       team.assign_attributes({
         name: json_auth_res["team_name"],
         bot_slack_id: json_auth_res["bot"]["bot_user_id"],
@@ -13,9 +13,8 @@ class Team < ActiveRecord::Base
       })
 
       if team.save!
-        user = User.find_or_create_by(slack_id: json_auth_res["user_id"])
+        user = User.find_or_initialize_by(slack_id: json_auth_res["user_id"])
         user.assign_attributes(token: json_auth_res["access_token"], team: team)
-        user.fetch_name(team.bot_token)
         return true if user.save!
       end
     end
