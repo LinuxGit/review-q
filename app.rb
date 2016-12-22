@@ -47,6 +47,8 @@ class MyApp < Sinatra::Base
       event = data.event
       @team = Team.find_by(slack_id: data.team_id)
       if @team && event.text && event.text.match(/<@#{@team.bot_slack_id}>/)
+        p "Team found: #{@team.name}"
+        p "Message received: #{event.text}"
         t = Thread.new {
 
           item = @team.create_channel_and_item_from_event(event)
@@ -74,6 +76,12 @@ class MyApp < Sinatra::Base
 
         t.abort_on_exception = true
         return 200
+      else
+        if !@team
+          p "No team found"
+        else
+          p "Message not related to Review Q"
+        end
       end
     end
   end
