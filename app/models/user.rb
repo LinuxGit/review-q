@@ -10,8 +10,10 @@ class User < ActiveRecord::Base
       res = RestClient.post 'https://slack.com/api/users.info', options, content_type: :json
       parsed_res = JSON.parse(res)
       if parsed_res["ok"]
+        self.username   = parsed_res["user"]["name"]
+        self.avatar_24  = parsed_res["user"]["profile"]["image_24"]
         self.first_name = parsed_res["user"]["profile"]["first_name"]
-        self.last_name = parsed_res["user"]["profile"]["last_name"]
+        self.last_name  = parsed_res["user"]["profile"]["last_name"]
       end
     end
   end

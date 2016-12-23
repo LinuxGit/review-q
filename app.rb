@@ -38,50 +38,46 @@ class MyApp < Sinatra::Base
 
     halt 500 if data.token != ENV['VERIFICATION_TOKEN']
 
-    case data.type
-    when "url_verification"
+    if data.type == "url_verification"
       content_type :json
       return {challenge: data.challenge}.to_json
 
-    when "event_callback"
+    elsif data.type == "event_callback"
       event = data.event
+      p event
+
       @team = Team.find_by(slack_id: data.team_id)
-      if @team && event.text && event.text.match(/<@#{@team.bot_slack_id}>/)
-        p "Team found: #{@team.name}"
-        p "Message received: #{event.text}"
-        t = Thread.new {
 
+      halt 500 unless @team
+
+      case event.type
+      when "message"
+
+        case event.text
+        when /^<@#{@team.bot_slack_id}> add/
+          p "Team found: #{@team.name}"
+          p "Message received: #{event.text}"
+
+          event.text.gsub!("<@#{@team.bot_slack_id}> add ", '')
           item = @team.create_channel_and_item_from_event(event)
+          item.channel.send_summary_message("Item added! There are now ")
 
-          options = {
-            token: @team.bot_token,
-            channel: item.channel.slack_id,
-            text: "#{item.channel.items.count} items in the queue",
-            attachments: JSON.generate([{
-              fallback: "FALLBACK",
-              callback_id: "all/" + event.channel,
-              actions: [
-                {
-                  name: "all",
-                  text: "View all",
-                  type: "button",
-                  value: "0"
-                }
-              ]
-            }])
-          }
+        when /^<@#{@team.bot_slack_id}> list/
+          p "Team found: #{@team.name}"
+          p "Message received: #{event.text}"
 
-          res = RestClient.post 'https://slack.com/api/chat.postMessage', options, content_type: :json
-        }
+          channel = Channel.find_by(slack_id: event.channel)
 
-        t.abort_on_exception = true
-        return 200
-      else
-        if !@team
-          p "No team found"
+          if channel
+            channel.send_items_list(0)
+          else
+            send_error_message(data.response_url)
+          end
         else
           p "Message not related to Review Q"
         end
+
+        return 200
       end
     end
   end
@@ -101,55 +97,32 @@ class MyApp < Sinatra::Base
       channel = Channel.find_by(slack_id: callback_ids[1])
 
       if channel
-        page_item_index = data.actions[0]["value"].to_i
-        attachments = channel.build_message_attachments(page_item_index)
-
-        options = {
-          replace_original: true,
-          text: "Here are your messages",
-          attachments: attachments
-        }
-
+        channel.send_items_list(data.actions[0]["value"].to_i, data.response_url)
       else
-        options = {
-          response_type: "ephemeral",
-          replace_original: false,
-          text: "Sorry, that didn't work. Please try again."
-        }
-
+        send_error_message(data.response_url)
       end
-      res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
 
     when "complete_item"
-      channel = Channel.find_by(slack_id: callback_ids[1])
-
-      if channel
-        item = Item.find_by(ts: data.actions[0]["value"])
-        if item
-          item.mark_complete(data.user["id"])
-          item.destroy
-          attachments = channel.build_message_attachments(callback_ids[2].to_i)
-          message = attachments.empty? ? "There are no messages in the queue" : "Here are your messages"
-
-          options = {
-            replace_original: true,
-            text: message,
-            attachments: attachments
-          }
-        end
-
+      item = Item.find_by(ts: data.actions[0]["value"])
+      if item
+        item.mark_complete(data.user["id"])
+        item.destroy
+        item.channel.send_items_list(callback_ids[2].to_i, data.response_url)
       else
-        options = {
-          response_type: "ephemeral",
-          replace_original: false,
-          text: "Sorry, that didn't work. Please try again."
-        }
-
+        send_error_message(data.response_url)
       end
-      res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
-
     end
 
     return 200
+  end
+
+  def send_error_message(url)
+    options = {
+      response_type: "ephemeral",
+      replace_original: false,
+      text: "Sorry, that didn't work. Please try again."
+    }
+
+    res = RestClient.post url, JSON.generate(options), content_type: :json
   end
 end
