@@ -60,7 +60,7 @@ class MyApp < Sinatra::Base
 
           event.text.gsub!("<@#{@team.bot_slack_id}> add ", '')
           item = @team.create_channel_and_item_from_event(event)
-          item.channel.send_summary_message("Item added! There are now ")
+          item.channel.send_summary_message(pre_message: "Item added! There are now ")
 
         when /^<@#{@team.bot_slack_id}> list/
           p "Team found: #{@team.name}"
