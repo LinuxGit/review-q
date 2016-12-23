@@ -68,11 +68,11 @@ class MyApp < Sinatra::Base
 
           channel = Channel.find_by(slack_id: event.channel)
 
-          if channel
-            channel.send_items_list(0)
-          else
-            send_error_message(data.response_url)
+          if !channel
+            channel = @team.create_channel_from_event(event)
           end
+
+          channel.send_items_list(0)
         else
           p "Message not related to Review Q"
         end

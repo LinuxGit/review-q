@@ -23,9 +23,23 @@ class Team < ActiveRecord::Base
   end
 
   def create_channel_and_item_from_event(event)
-    channel = channels.find_or_create_by(slack_id: event.channel)
-    user = users.find_or_create_by(slack_id: event.user)
+    channel = create_channel(event.channel)
+    user = create_user(event.user)
     item = channel.items.new(ts: event.ts, message: event.text, user: user)
     return item if item.save! && user.save!
+  end
+
+  def create_channel_from_event(event)
+    channel = create_channel(event.channel)
+    user = create_user(event.user)
+    return channel if channel.save! && user.save!
+  end
+
+  def create_channel(channel_id)
+    channels.find_or_create_by(slack_id: channel_id)
+  end
+
+  def create_user(user_id)
+    users.find_or_create_by(slack_id: user_id)
   end
 end
