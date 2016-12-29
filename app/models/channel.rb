@@ -16,7 +16,9 @@ class Channel < ActiveRecord::Base
   end
 
   def send_summary_message(pre_message: '', url: 'https://slack.com/api/chat.postMessage')
-    message = "#{pre_message}#{items.count} items in the queue"
+    count = items.open.count
+    item_pluralized = count > 1 ? 'items' : 'item'
+    message = "#{pre_message}#{count} #{item_pluralized} in the queue"
 
     options = {
       token: team.bot_token,
@@ -69,11 +71,13 @@ class Channel < ActiveRecord::Base
   end
 
   def build_message_attachments(first)
-    return [] if items.count == 0
+    count = items.open.count
+    return [] if count == 0
+
     last = first + (PER_PAGE - 1)
-    last = items.count - 1 if last >= items.count
+    last = count - 1 if last >= count
     p "#{first}, #{last}"
-    attachments = items[first..last].inject([]) { |a, i| a << {
+    attachments = items.open[first..last].inject([]) { |a, i| a << {
       author_name: i.user.first_name + " " + i.user.last_name,
       author_icon: i.user.avatar_24,
       text: i.message,
@@ -90,7 +94,7 @@ class Channel < ActiveRecord::Base
     } }
 
     buttons = []
-    buttons << ["next", last + 1] if last != items.count - 1
+    buttons << ["next", last + 1] if last != count - 1
     buttons << ["previous", first - PER_PAGE] if first != 0
     buttons << ["close", -1]
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20161223010732) do
+ActiveRecord::Schema.define(version: 20161229220721) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -21,11 +21,14 @@ ActiveRecord::Schema.define(version: 20161223010732) do
   end
 
   create_table "items", force: :cascade do |t|
-    t.integer "channel_id"
-    t.integer "user_id"
-    t.string  "ts"
-    t.string  "message"
-    t.string  "archive_link"
+    t.integer  "channel_id"
+    t.integer  "user_id"
+    t.string   "ts"
+    t.string   "message"
+    t.string   "archive_link"
+    t.boolean  "complete",       default: false
+    t.datetime "date_completed"
+    t.string   "completed_by"
   end
 
   create_table "teams", force: :cascade do |t|

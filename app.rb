@@ -114,7 +114,6 @@ class MyApp < Sinatra::Base
       item = Item.find_by(ts: data.actions[0]["value"])
       if item
         item.mark_complete(data.user["id"])
-        item.destroy
         item.channel.send_items_list(callback_ids[2].to_i, data.response_url)
       else
         send_error_message(data.response_url)

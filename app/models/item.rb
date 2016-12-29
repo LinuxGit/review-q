@@ -9,15 +9,25 @@ class Item < ActiveRecord::Base
   validates :archive_link, presence: true
   validates :user, presence: true
 
-  def mark_complete(by_user_id)
-    options = {
-      token: team.bot_token,
-      channel: user.slack_id,
-      text: "#{archive_link} was marked as complete by <@#{by_user_id}>",
-      as_user: true
-    }
+  scope :open, -> { where(complete: false) }
 
-    res = RestClient.post 'https://slack.com/api/chat.postMessage', options, content_type: :json
+  def mark_complete(by_user_id)
+    self.complete = true
+    self.date_completed = Time.now
+    self.completed_by = by_user_id
+    self.save!
+
+    if ENV['RACK_ENV'] == 'development' || by_user_id != user.slack_id
+      options = {
+        token: team.bot_token,
+        channel: user.slack_id,
+        as_user: true,
+        text: "#{archive_link} was marked as complete by <@#{by_user_id}>",
+      }
+
+      res = RestClient.post 'https://slack.com/api/chat.postMessage', options, content_type: :json
+    end
+
   end
 
   def create_archive_link
@@ -36,5 +46,19 @@ class Item < ActiveRecord::Base
 
       self.archive_link = "https://#{domain}.slack.com/archives/#{channel_name}/p#{ts.delete('.')}"
     end
+  end
+
+  def date_created
+    Time.at(ts.split('.')[0].to_i)
+  end
+
+  def time_to_complete
+    raise "Item not completed" unless complete
+    date_completed - date_created
+  end
+
+  def time_to_complete_formatted
+    t = time_to_complete
+    Time.at(t).utc.strftime("%H:%M:%S")
   end
 end
