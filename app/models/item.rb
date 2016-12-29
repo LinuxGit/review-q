@@ -3,8 +3,11 @@ class Item < ActiveRecord::Base
   belongs_to :user
   has_one :team, through: :channel
 
-  before_save :create_archive_link
+  before_validation :create_archive_link
 
+  validates :ts, presence: true
+  validates :archive_link, presence: true
+  validates :user, presence: true
 
   def mark_complete(by_user_id)
     options = {

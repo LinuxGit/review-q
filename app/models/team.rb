@@ -2,6 +2,10 @@ class Team < ActiveRecord::Base
   has_many :users
   has_many :channels
 
+  validates :name, presence: true
+  validates :bot_slack_id, uniqueness: true, presence: true
+  validates :bot_token, uniqueness: true, presence: true
+
   def self.add_from_json(json_auth_res)
     p json_auth_res
     if json_auth_res["ok"]
@@ -24,8 +28,15 @@ class Team < ActiveRecord::Base
 
   def create_channel_and_item_from_event(event)
     channel = create_channel(event.channel)
-    user = create_user(event.user)
-    item = channel.items.new(ts: event.ts, message: event.text, user: user)
+
+    if event.text.blank? && event.attachments && a = event.attachments.detect{ |a| a.is_share }
+      user = users.find_or_create_by(slack_username: a.author_subname)
+      item = channel.items.new(ts: event.ts, message: a.text, user: user, archive_link: a.from_url)
+    else
+      user = create_user(event.user)
+      item = channel.items.new(ts: event.ts, message: event.text, user: user)
+    end
+
     return item if item.save! && user.save!
   end
 

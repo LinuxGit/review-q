@@ -58,7 +58,7 @@ class MyApp < Sinatra::Base
           p "Team found: #{@team.name}"
           p "Message received: #{event.text}"
 
-          event.text.gsub!("<@#{@team.bot_slack_id}> add ", '')
+          event.text.gsub!("<@#{@team.bot_slack_id}> add", '').strip!
           item = @team.create_channel_and_item_from_event(event)
           item.channel.send_summary_message(pre_message: "Item added! There are now ")
 
@@ -73,6 +73,14 @@ class MyApp < Sinatra::Base
           end
 
           channel.send_items_list(0)
+
+        when /^<@#{@team.bot_slack_id}> help/
+          send_help_message(@team.bot_token, event.channel)
+
+        when 'help'
+          if event.channel[0] == 'D'
+            send_help_message(@team.bot_token, event.channel)
+          end
         else
           p "Message not related to Review Q"
         end
@@ -124,5 +132,31 @@ class MyApp < Sinatra::Base
     }
 
     res = RestClient.post url, JSON.generate(options), content_type: :json
+  end
+
+  def send_help_message(token, channel)
+    options = {
+      token: token,
+      text: help_message,
+      channel: channel
+    }
+
+    res = RestClient.post 'https://slack.com/api/chat.postMessage', options
+    p res.body
+  end
+
+  def help_message
+    <<~HEREDOC
+    Review Q is a way to manage a queue of work within the context of a channel. For example, a legal team might queue up messages requesting them to review contracts or a software development team might queue up Pull Requests that need to be reviewed.
+
+    To add a message to the queue for a channel just say `@review-q add [text you want to add]`.
+
+    You can view your review queue at any time by saying `@review-q list`. From the list you can mark items as complete.
+
+    We recommend using Slack's share message feature to take messages from the channel and add them to the queue (with some additional context for the person triaging the list).
+
+    If you share a message and only say `@review-q add`, we'll automatically add just the text from the shared message to the queue.
+    HEREDOC
+
   end
 end
