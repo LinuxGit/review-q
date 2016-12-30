@@ -47,28 +47,18 @@ class MyApp < Sinatra::Base
       p event
 
       @team = Team.find_by(slack_id: data.team_id)
-
       halt 500 unless @team
+      p "Team found: #{@team.name}"
 
-      case event.type
-      when "message"
+      if event.type == "message"
         case event.subtype
         when nil
 
           case event.text
           when /^<@#{@team.bot_slack_id}> add/
-            p "Team found: #{@team.name}"
-            p "Message received: #{event.text}"
-
-            t = Thread.new {
-              item = @team.create_channel_and_item_from_event(event, event.text)
-              item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
-            }.abort_on_exception = true
+            add_item(event, event.text)
 
           when /^<@#{@team.bot_slack_id}> list/
-            p "Team found: #{@team.name}"
-            p "Message received: #{event.text}"
-
             channel = Channel.find_by(slack_id: event.channel)
 
             if !channel
@@ -81,10 +71,7 @@ class MyApp < Sinatra::Base
             Bot.send_help_message(@team.bot_token, event.channel)
 
           when /<@#{@team.bot_slack_id}>/
-            t = Thread.new {
-              item = @team.create_channel_and_item_from_event(event, event.text,  vague: true)
-              item.send_vague_message
-            }.abort_on_exception = true
+            add_item(event, event.text,  vague: true)
 
           when 'help'
             if event.channel[0] == 'D'
@@ -95,27 +82,13 @@ class MyApp < Sinatra::Base
           end
 
         when "file_comment"
-
           if event.comment.comment.match /^<@#{@team.bot_slack_id}> add/
-            p "Team found: #{@team.name}"
-            p "Message received: #{event.comment.comment}"
-
-            t = Thread.new {
-              item = @team.create_channel_and_item_from_event(event, event.comment.comment)
-              item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
-            }.abort_on_exception = true
+            add_item(event, event.comment.comment)
           end
 
         when "file_share"
-
           if event.file.initial_comment.comment.match /^<@#{@team.bot_slack_id}> add/
-            p "Team found: #{@team.name}"
-            p "Message received: #{event.file.initial_comment.comment}"
-
-            t = Thread.new {
-              item = @team.create_channel_and_item_from_event(event, event.file.initial_comment.comment)
-              item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
-            }.abort_on_exception = true
+              add_item(event, event.file.initial_comment.comment)
           end
         end
 
@@ -176,5 +149,18 @@ class MyApp < Sinatra::Base
     end
 
     return 200
+  end
+
+  def add_item(event, message, vague: false)
+    p "Message received: #{message}"
+
+    t = Thread.new {
+      item = @team.create_channel_and_item_from_event(event, message)
+      if vague
+        item.send_vague_message
+      else
+        item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
+      end
+    }.abort_on_exception = true
   end
 end
