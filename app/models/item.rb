@@ -9,7 +9,7 @@ class Item < ActiveRecord::Base
   validates :archive_link, presence: true
   validates :user, presence: true
 
-  scope :open, -> { where(complete: false) }
+  scope :open, -> { where(complete: false, vague: false) }
 
   def mark_complete(by_user_id)
     self.complete = true
@@ -27,6 +27,16 @@ class Item < ActiveRecord::Base
 
       res = RestClient.post 'https://slack.com/api/chat.postMessage', options, content_type: :json
     end
+
+    options = {
+      token: team.bot_token,
+      channel: channel.slack_id,
+      name: "white_check_mark",
+      timestamp: ts
+    }
+
+    res = RestClient.post 'https://slack.com/api/reactions.add', options, content_type: :json
+    p res.body
 
   end
 
@@ -61,4 +71,33 @@ class Item < ActiveRecord::Base
     t = time_to_complete
     Time.at(t).utc.strftime("%H:%M:%S")
   end
+
+  def send_vague_message
+    options = {
+      token: team.bot_token,
+      text: "Would you like to add this message to the queue?",
+      channel: channel.slack_id,
+      attachments: JSON.generate([{
+        fallback: "FALLBACK",
+        callback_id: "vague/" + id.to_s,
+        actions: [
+          {
+            name: "yes",
+            text: "Yes",
+            type: "button",
+            value: "yes"
+          },
+          {
+            name: "no",
+            text: "No",
+            type: "button",
+            value: "no"
+          }
+        ]
+      }])
+    }
+
+    res = RestClient.post 'https://slack.com/api/chat.postMessage', options
+  end
+
 end

@@ -34,6 +34,12 @@ class Channel < ActiveRecord::Base
             text: "View all",
             type: "button",
             value: "0"
+          },
+          {
+            name: "close",
+            text: "Close",
+            type: "button",
+            value: "close"
           }
         ]
       }]
@@ -80,14 +86,16 @@ class Channel < ActiveRecord::Base
     attachments = items.open[first..last].inject([]) { |a, i| a << {
       author_name: i.user.first_name + " " + i.user.last_name,
       author_icon: i.user.avatar_24,
+      color: "#95c0d8",
       text: i.message,
       footer: "<#{i.archive_link}|Archive link>",
       ts: i.ts,
-      fallback: "FALLBACK",
+      fallback: "Mark as done",
       callback_id: "complete_item/" + slack_id + "/" + first.to_s,
+      mrkdwn_in: ["text"],
       actions: [{
         name: "complete",
-        text: "Mark as done",
+        text: ":pencil: Mark as done",
         type: "button",
         value: i.ts
       }]
@@ -96,20 +104,21 @@ class Channel < ActiveRecord::Base
     buttons = []
     buttons << ["next", last + 1] if last != count - 1
     buttons << ["previous", first - PER_PAGE] if first != 0
-    buttons << ["close", -1]
+    buttons << ["minimize", -1]
 
     actions = []
     buttons.each do |b|
       actions << {
         name: b[0],
-        text: b[0].capitalize + "/" + b[1].to_s,
+        text: b[0].capitalize,
         type: "button",
         value: b[1]
       }
     end
 
     attachments << {
-      fallback: "FALLBACK",
+      color: "#4ead61",
+      fallback: "Next/Previous",
       callback_id: "pagination/" + slack_id,
       actions: actions
     }

@@ -52,38 +52,49 @@ class MyApp < Sinatra::Base
 
       case event.type
       when "message"
+        if !event.subtype || event.subtype && event.subtype != "message_deleted"
+          case event.text
+          when /^<@#{@team.bot_slack_id}> add/
+            p "Team found: #{@team.name}"
+            p "Message received: #{event.text}"
 
-        case event.text
-        when /^<@#{@team.bot_slack_id}> add/
-          p "Team found: #{@team.name}"
-          p "Message received: #{event.text}"
+            t = Thread.new {
+              event.text.gsub!("<@#{@team.bot_slack_id}> add", '').strip!
+              item = @team.create_channel_and_item_from_event(event)
+              item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
+            }
 
-          event.text.gsub!("<@#{@team.bot_slack_id}> add", '').strip!
-          item = @team.create_channel_and_item_from_event(event)
-          item.channel.send_summary_message(pre_message: "Item added! There are now ")
+          when /^<@#{@team.bot_slack_id}> list/
+            p "Team found: #{@team.name}"
+            p "Message received: #{event.text}"
 
-        when /^<@#{@team.bot_slack_id}> list/
-          p "Team found: #{@team.name}"
-          p "Message received: #{event.text}"
+            channel = Channel.find_by(slack_id: event.channel)
 
-          channel = Channel.find_by(slack_id: event.channel)
+            if !channel
+              channel = @team.create_channel_from_event(event)
+            end
 
-          if !channel
-            channel = @team.create_channel_from_event(event)
+            channel.send_items_list(0)
+
+          when /^<@#{@team.bot_slack_id}> help/
+            Bot.send_help_message(@team.bot_token, event.channel)
+
+          when /^<@#{@team.bot_slack_id}>/
+            t = Thread.new {
+              event.text.gsub!("<@#{@team.bot_slack_id}>", '').strip!
+              item = @team.create_channel_and_item_from_event(event, vague: true)
+              item.send_vague_message
+            }
+
+          when 'help'
+            if event.channel[0] == 'D'
+              Bot.send_help_message(@team.bot_token, event.channel)
+            end
+          else
+            p "Message not related to Review Q"
           end
-
-          channel.send_items_list(0)
-
-        when /^<@#{@team.bot_slack_id}> help/
-          send_help_message(@team.bot_token, event.channel)
-
-        when 'help'
-          if event.channel[0] == 'D'
-            send_help_message(@team.bot_token, event.channel)
-          end
-        else
-          p "Message not related to Review Q"
         end
+
 
         return 200
       end
@@ -105,57 +116,42 @@ class MyApp < Sinatra::Base
       channel = Channel.find_by(slack_id: callback_ids[1])
 
       if channel
+        Bot.delete_message(channel, data.message_ts) if data.actions[0]["value"] == "close"
         channel.send_items_list(data.actions[0]["value"].to_i, data.response_url)
       else
-        send_error_message(data.response_url)
+        Bot.send_error_message(data.response_url)
       end
 
     when "complete_item"
       item = Item.find_by(ts: data.actions[0]["value"])
+      Thread.new {
+        if item
+          item.mark_complete(data.user["id"])
+          item.channel.send_items_list(callback_ids[2].to_i, data.response_url)
+        else
+          Bot.send_error_message(data.response_url)
+        end
+      }
+
+    when "vague"
+      item = Item.find(callback_ids[1])
       if item
-        item.mark_complete(data.user["id"])
-        item.channel.send_items_list(callback_ids[2].to_i, data.response_url)
-      else
-        send_error_message(data.response_url)
+        if data.actions[0]["value"] == "yes"
+          item.vague = false
+          item.save
+          item.channel.send_summary_message(pre_message: ":white_check_mark: Item added! There are now ", url: data.response_url)
+        else
+          item.destroy!
+          options = {
+            replace_original: true,
+            text: "Got it! I'll ignore that message."
+          }
+
+          res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
+        end
       end
     end
 
     return 200
-  end
-
-  def send_error_message(url)
-    options = {
-      response_type: "ephemeral",
-      replace_original: false,
-      text: "Sorry, that didn't work. Please try again."
-    }
-
-    res = RestClient.post url, JSON.generate(options), content_type: :json
-  end
-
-  def send_help_message(token, channel)
-    options = {
-      token: token,
-      text: help_message,
-      channel: channel
-    }
-
-    res = RestClient.post 'https://slack.com/api/chat.postMessage', options
-    p res.body
-  end
-
-  def help_message
-    <<~HEREDOC
-    Review Q is a way to manage a queue of work within the context of a channel. For example, a legal team might queue up messages requesting them to review contracts or a software development team might queue up Pull Requests that need to be reviewed.
-
-    To add a message to the queue for a channel just say `@review-q add [text you want to add]`.
-
-    You can view your review queue at any time by saying `@review-q list`. From the list you can mark items as complete.
-
-    We recommend using Slack's share message feature to take messages from the channel and add them to the queue (with some additional context for the person triaging the list).
-
-    If you share a message and only say `@review-q add`, we'll automatically add just the text from the shared message to the queue.
-    HEREDOC
-
   end
 end

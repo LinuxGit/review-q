@@ -26,15 +26,26 @@ class Team < ActiveRecord::Base
     return false
   end
 
-  def create_channel_and_item_from_event(event)
+  def create_channel_and_item_from_event(event, vague: false)
     channel = create_channel(event.channel)
 
     if event.text.blank? && event.attachments && a = event.attachments.detect{ |a| a.is_share }
       user = users.find_or_create_by(slack_username: a.author_subname)
-      item = channel.items.new(ts: event.ts, message: a.text, user: user, archive_link: a.from_url)
+      item = channel.items.new(
+        ts: event.ts,
+        message: a.text,
+        user: user,
+        archive_link: a.from_url,
+        vague: vague
+      )
     else
       user = create_user(event.user)
-      item = channel.items.new(ts: event.ts, message: event.text, user: user)
+      item = channel.items.new(
+        ts: event.ts,
+        message: event.text,
+        user: user,
+        vague: vague
+      )
     end
 
     return item if item.save! && user.save!

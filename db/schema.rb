@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20161229220721) do
+ActiveRecord::Schema.define(version: 20161229230115) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -29,6 +29,7 @@ ActiveRecord::Schema.define(version: 20161229220721) do
     t.boolean  "complete",       default: false
     t.datetime "date_completed"
     t.string   "completed_by"
+    t.boolean  "vague",          default: false
   end
 
   create_table "teams", force: :cascade do |t|
