@@ -26,10 +26,30 @@ class Team < ActiveRecord::Base
     return false
   end
 
-  def create_channel_and_item_from_event(event, vague: false)
+  def create_channel_and_item_from_event(event, message, vague: false)
+    message.gsub!("<@#{bot_slack_id}> add", '')
+    message.gsub!("<@#{bot_slack_id}>", '')
+    message.strip!
     channel = create_channel(event.channel)
 
-    if event.text.blank? && event.attachments && a = event.attachments.detect{ |a| a.is_share }
+    if event.file
+      p event
+      user_id = event.comment ? event.comment.user : event.file.initial_comment.user
+      user = create_user(user_id)
+      message = if message.blank?
+                  "File <#{event.file.url_private}|#{event.file.title}>"
+                else
+                  "Commented on file <#{event.file.url_private}|#{event.file.title}>: #{message}"
+                end
+
+      item = channel.items.new(
+        ts: event.ts,
+        message: message,
+        user: user,
+        vague: vague
+      )
+
+    elsif message.blank? && event.attachments && a = event.attachments.detect{ |a| a.is_share }
       user = users.find_or_create_by(slack_username: a.author_subname)
       item = channel.items.new(
         ts: event.ts,
@@ -38,11 +58,12 @@ class Team < ActiveRecord::Base
         archive_link: a.from_url,
         vague: vague
       )
+
     else
       user = create_user(event.user)
       item = channel.items.new(
         ts: event.ts,
-        message: event.text,
+        message: message,
         user: user,
         vague: vague
       )

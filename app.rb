@@ -52,17 +52,18 @@ class MyApp < Sinatra::Base
 
       case event.type
       when "message"
-        if !event.subtype || event.subtype && event.subtype != "message_deleted"
+        case event.subtype
+        when nil
+
           case event.text
           when /^<@#{@team.bot_slack_id}> add/
             p "Team found: #{@team.name}"
             p "Message received: #{event.text}"
 
             t = Thread.new {
-              event.text.gsub!("<@#{@team.bot_slack_id}> add", '').strip!
-              item = @team.create_channel_and_item_from_event(event)
+              item = @team.create_channel_and_item_from_event(event, event.text)
               item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
-            }
+            }.abort_on_exception = true
 
           when /^<@#{@team.bot_slack_id}> list/
             p "Team found: #{@team.name}"
@@ -79,12 +80,11 @@ class MyApp < Sinatra::Base
           when /^<@#{@team.bot_slack_id}> help/
             Bot.send_help_message(@team.bot_token, event.channel)
 
-          when /^<@#{@team.bot_slack_id}>/
+          when /<@#{@team.bot_slack_id}>/
             t = Thread.new {
-              event.text.gsub!("<@#{@team.bot_slack_id}>", '').strip!
-              item = @team.create_channel_and_item_from_event(event, vague: true)
+              item = @team.create_channel_and_item_from_event(event, event.text,  vague: true)
               item.send_vague_message
-            }
+            }.abort_on_exception = true
 
           when 'help'
             if event.channel[0] == 'D'
@@ -93,8 +93,31 @@ class MyApp < Sinatra::Base
           else
             p "Message not related to Review Q"
           end
-        end
 
+        when "file_comment"
+
+          if event.comment.comment.match /^<@#{@team.bot_slack_id}> add/
+            p "Team found: #{@team.name}"
+            p "Message received: #{event.comment.comment}"
+
+            t = Thread.new {
+              item = @team.create_channel_and_item_from_event(event, event.comment.comment)
+              item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
+            }.abort_on_exception = true
+          end
+
+        when "file_share"
+
+          if event.file.initial_comment.comment.match /^<@#{@team.bot_slack_id}> add/
+            p "Team found: #{@team.name}"
+            p "Message received: #{event.file.initial_comment.comment}"
+
+            t = Thread.new {
+              item = @team.create_channel_and_item_from_event(event, event.file.initial_comment.comment)
+              item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
+            }.abort_on_exception = true
+          end
+        end
 
         return 200
       end
@@ -131,7 +154,7 @@ class MyApp < Sinatra::Base
         else
           Bot.send_error_message(data.response_url)
         end
-      }
+      }.abort_on_exception = true
 
     when "vague"
       item = Item.find(callback_ids[1])

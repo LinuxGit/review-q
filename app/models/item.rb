@@ -98,6 +98,7 @@ class Item < ActiveRecord::Base
     }
 
     res = RestClient.post 'https://slack.com/api/chat.postMessage', options
+    p res.body
   end
 
 end
