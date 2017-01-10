@@ -65,7 +65,16 @@ class Channel < ActiveRecord::Base
     reverse = page_info[1] == "true"
 
     attachments = build_message_attachments(index, reverse)
-    message = attachments.empty? ? "There are no messages in the queue" : "Here are your messages"
+
+    message = if attachments.empty?
+                "There are no messages in the queue"
+              else
+                if reverse
+                  "Here are your messages (newest to oldest)"
+                else
+                  "Here are your messages (oldest to newest)"
+                end
+              end
 
     options = {
       token: team.bot_token,
