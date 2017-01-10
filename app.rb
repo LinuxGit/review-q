@@ -65,7 +65,7 @@ class MyApp < Sinatra::Base
               channel = @team.create_channel_from_event(event)
             end
 
-            channel.send_items_list(0)
+            channel.send_items_list("0")
 
           when /^<@#{@team.bot_slack_id}> help/
             Bot.send_help_message(@team.bot_token, event.channel)
@@ -113,7 +113,7 @@ class MyApp < Sinatra::Base
 
       if channel
         Bot.delete_message(channel, data.message_ts) if data.actions[0]["value"] == "close"
-        channel.send_items_list(data.actions[0]["value"].to_i, data.response_url)
+        channel.send_items_list(data.actions[0]["value"], data.response_url)
       else
         Bot.send_error_message(data.response_url)
       end
@@ -123,7 +123,7 @@ class MyApp < Sinatra::Base
       Thread.new {
         if item
           item.mark_complete(data.user["id"])
-          item.channel.send_items_list(callback_ids[2].to_i, data.response_url)
+          item.channel.send_items_list(callback_ids[2], data.response_url)
         else
           Bot.send_error_message(data.response_url)
         end
@@ -157,7 +157,7 @@ class MyApp < Sinatra::Base
     t = Thread.new {
       item = @team.create_channel_and_item_from_event(event, message)
       if vague
-        item.send_vague_message
+        item.channel.send_vague_message(item)
       else
         item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
       end
