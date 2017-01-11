@@ -1,4 +1,14 @@
+require 'resque'
+
 class Bot
+  def self.async_event_processing(data)
+    Resque.enqueue(EventWorker, data)
+  end
+
+  def self.async_button_processing(data)
+    Resque.enqueue(ButtonWorker, data)
+  end
+
   def self.send_error_message(url)
     options = {
       response_type: "ephemeral",
@@ -44,4 +54,5 @@ class Bot
 
     res = RestClient.post 'https://slack.com/api/chat.delete', options
   end
+
 end

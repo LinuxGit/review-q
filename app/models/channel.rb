@@ -127,7 +127,7 @@ class Channel < ActiveRecord::Base
     buttons << ["next", last + 1, reverse] if last != count - 1
     buttons << ["previous", first - PER_PAGE, reverse] if first != 0
     buttons << ["minimize", -1, reverse]
-    buttons << ["sort", 0, true] if first == 0
+    buttons << ["sort", 0, !reverse] if first == 0
 
     actions = []
     buttons.each do |b|
@@ -177,5 +177,4 @@ class Channel < ActiveRecord::Base
     res = RestClient.post 'https://slack.com/api/chat.postMessage', options
     p res.body
   end
-
 end

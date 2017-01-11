@@ -3,7 +3,7 @@ require 'sinatra/base'
 require 'sinatra/activerecord'
 require 'json'
 
-Dir["app/models/*.rb"].each {|file| require_relative file }
+Dir["app/models/**/*.rb"].each {|file| require_relative file }
 
 class MyApp < Sinatra::Base
   register Sinatra::ActiveRecordExtension
@@ -34,67 +34,19 @@ class MyApp < Sinatra::Base
 
   post '/events' do
     request.body.rewind
-    data = JSON.parse(request.body.read, object_class: OpenStruct)
+    body = request.body.read
 
-    halt 500 if data.token != ENV['VERIFICATION_TOKEN']
+    data = JSON.parse(body)
+    halt 500 if data["token"] != ENV['VERIFICATION_TOKEN']
 
-    if data.type == "url_verification"
+    if data["type"] == "url_verification"
       content_type :json
-      return {challenge: data.challenge}.to_json
-
-    elsif data.type == "event_callback"
-      event = data.event
-      p event
-
-      @team = Team.find_by(slack_id: data.team_id)
-      halt 500 unless @team
-      p "Team found: #{@team.name}"
-
-      if event.type == "message"
-        case event.subtype
-        when nil
-
-          case event.text
-          when /^<@#{@team.bot_slack_id}> add/
-            add_item(event, event.text)
-
-          when /^<@#{@team.bot_slack_id}> list/
-            channel = Channel.find_by(slack_id: event.channel)
-
-            if !channel
-              channel = @team.create_channel_from_event(event)
-            end
-
-            channel.send_items_list("0")
-
-          when /^<@#{@team.bot_slack_id}> help/
-            Bot.send_help_message(@team.bot_token, event.channel)
-
-          when /<@#{@team.bot_slack_id}>/
-            add_item(event, event.text,  vague: true)
-
-          when 'help'
-            if event.channel[0] == 'D'
-              Bot.send_help_message(@team.bot_token, event.channel)
-            end
-          else
-            p "Message not related to Review Q"
-          end
-
-        when "file_comment"
-          if event.comment.comment.match /^<@#{@team.bot_slack_id}> add/
-            add_item(event, event.comment.comment)
-          end
-
-        when "file_share"
-          if event.file.initial_comment.comment.match /^<@#{@team.bot_slack_id}> add/
-              add_item(event, event.file.initial_comment.comment)
-          end
-        end
-
-        return 200
-      end
+      return {challenge: data["challenge"]}.to_json
     end
+
+    Bot.async_event_processing(body)
+
+    return 200
   end
 
   post '/interactive-button' do
@@ -102,13 +54,10 @@ class MyApp < Sinatra::Base
     body_arr = URI::decode_www_form(request.body.read)
     data = JSON.parse(body_arr[0][1], object_class: OpenStruct)
 
-    halt 500 if data.token != ENV['VERIFICATION_TOKEN']
+    halt 500 if data["token"] != ENV['VERIFICATION_TOKEN']
 
-    @team = Team.find_by(slack_id: data.team.id)
     callback_ids = data.callback_id.split('/')
-
-    case callback_ids[0]
-    when "all", "pagination"
+    if callback_ids[0] == "all" || callback_ids[0] == "pagination"
       channel = Channel.find_by(slack_id: callback_ids[1])
 
       if channel
@@ -117,50 +66,10 @@ class MyApp < Sinatra::Base
       else
         Bot.send_error_message(data.response_url)
       end
-
-    when "complete_item"
-      item = Item.find_by(ts: data.actions[0]["value"])
-      Thread.new {
-        if item
-          item.mark_complete(data.user["id"])
-          item.channel.send_items_list(callback_ids[2], data.response_url)
-        else
-          Bot.send_error_message(data.response_url)
-        end
-      }.abort_on_exception = true
-
-    when "vague"
-      item = Item.find(callback_ids[1])
-      if item
-        if data.actions[0]["value"] == "yes"
-          item.vague = false
-          item.save
-          item.channel.send_summary_message(pre_message: ":white_check_mark: Item added! There are now ", url: data.response_url)
-        else
-          item.destroy!
-          options = {
-            replace_original: true,
-            text: "Got it! I'll ignore that message."
-          }
-
-          res = RestClient.post data.response_url, JSON.generate(options), content_type: :json
-        end
-      end
+    else
+      Bot.async_button_processing(body_arr[0][1])
     end
 
     return 200
-  end
-
-  def add_item(event, message, vague: false)
-    p "Message received: #{message}"
-
-    t = Thread.new {
-      item = @team.create_channel_and_item_from_event(event, message)
-      if vague
-        item.channel.send_vague_message(item)
-      else
-        item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
-      end
-    }.abort_on_exception = true
   end
 end
