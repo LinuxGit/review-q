@@ -1,3 +1,6 @@
 require './app'
+require 'resque/server'
 
-run MyApp
+run Rack::URLMap.new \
+  "/"       => MyApp,
+  "/resque" => Resque::Server.new
