@@ -8,6 +8,7 @@ Dir["app/models/**/*.rb"].each {|file| require_relative file }
 class MyApp < Sinatra::Base
   register Sinatra::ActiveRecordExtension
 
+  set :public_folder, 'public'
   ActiveRecord::Base.establish_connection(ENV['DATABASE_URL'] || 'postgres://localhost/review-q_dev')
 
   get '/' do
