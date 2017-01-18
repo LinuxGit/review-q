@@ -27,6 +27,7 @@ GEM
     mono_logger (1.1.0)
     multi_json (1.12.1)
     netrc (0.11.0)
+    newrelic_rpm (3.17.2.327)
     pg (0.19.0)
     rack (1.6.5)
     rack-protection (1.5.3)
@@ -68,6 +69,7 @@ PLATFORMS
 DEPENDENCIES
   activerecord
   byebug
+  newrelic_rpm
   pg
   rake
   resque
