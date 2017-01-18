@@ -153,6 +153,12 @@ article, aside, details, figcaption, figure, footer, header, hgroup, main, nav, 
     text-align: center;
 }
 
+.hello ol{
+    color: rgba(255,255,255,0.6);
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+
 .heroimage img:nth-of-type(1) {
     height: 530px;
     display: block;

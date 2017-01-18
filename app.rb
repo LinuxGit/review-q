@@ -26,9 +26,9 @@ class MyApp < Sinatra::Base
 
       res = RestClient.post 'https://slack.com/api/oauth.access', options, content_type: :json
       if Team.add_from_json(JSON.parse(res))
-        "Bot successfully installed"
+        erb :oauth
       else
-        "Oh no :( Something went wrong. The error message is: #{JSON.parse(res)['error']}. Hope that means something to you."
+        raise JSON.parse(res)['error']
       end
     end
   end
@@ -72,5 +72,9 @@ class MyApp < Sinatra::Base
     end
 
     return 200
+  end
+
+  error do
+    erb :error
   end
 end
