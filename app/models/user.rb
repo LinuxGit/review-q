@@ -2,7 +2,7 @@ class User < ActiveRecord::Base
   belongs_to :team
   has_many :items
 
-  validates :slack_username, uniqueness: true, presence: true
+  validates :slack_username, presence: true
   validates :slack_id, uniqueness: true, presence: true
 
   before_validation :fetch_missing_info
