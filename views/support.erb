@@ -35,17 +35,15 @@
     <section class="welcome hero">
     <div class="container">
       <div class="hello">
-        <h1 class="lite">Oh no! Something went wrong</h1>
+        <h1 class="lite">Support</h1>
       </div>
     </div>
     </section>
+    <section>
     <div class="container">
-    <div>
-        <% if env['sinatra.error'] && env['sinatra.error'].message %>
-          <h4><%="We're really sorry about that. The error message is #{env['sinatra.error'].message}"%>></h4>
-        <% else %>
-          <h4>We're really sorry about that. If the problem persists, please contact us at support@reviewqbot.com</h4>
-        <% end %>
+        <h4>Need help, have a question or suggestion? Email the humans: <a href='mailto:support@reviewqbot.com'>support@reviewqbot.com</a><br/>
+        We're also on Twitter at <a href='https://twitter.com/reviewqbot'>@reviewqbot</a>
+        </h4>
     </div>
     </section>
   </body>

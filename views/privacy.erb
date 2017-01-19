@@ -35,17 +35,20 @@
     <section class="welcome hero">
     <div class="container">
       <div class="hello">
-        <h1 class="lite">Oh no! Something went wrong</h1>
+        <h1 class="lite">Privacy Policy</h1>
       </div>
     </div>
     </section>
+    <section>
     <div class="container">
-    <div>
-        <% if env['sinatra.error'] && env['sinatra.error'].message %>
-          <h4><%="We're really sorry about that. The error message is #{env['sinatra.error'].message}"%>></h4>
-        <% else %>
-          <h4>We're really sorry about that. If the problem persists, please contact us at support@reviewqbot.com</h4>
-        <% end %>
+        <h2>What personal information do we collect?</h2>
+        <p> When you add ReviewQ to your Slack team we save basic information about your team (name, slack id and domain) so we can recognize the account in our application. When users interact with ReviewQ we collect basic information from their Slack profiles (name, slack id, team) and the channel id of the channel they're currently in in order to personalize each user experience. We will never share or sell user or team information.
+        <p>
+
+        <h2>How do we protect your data?</h2>
+        <p>
+        ReviewQ lives on servers provided by Heroku and employs best practice security standards. We use an encrypted connection to communicate with Slack servers which are on AWS and perform regular backups which are stored securely by Heroku. We verify that every request we process is coming from Slack directly. Heroku's security policy is available at https://www.heroku.com/policy/security.
+        </p>
     </div>
     </section>
   </body>

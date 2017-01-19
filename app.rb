@@ -15,6 +15,18 @@ class MyApp < Sinatra::Base
     erb :index
   end
 
+  get '/privacy' do
+    erb :privacy
+  end
+
+  get '/500' do
+    erb :error
+  end
+
+  get '/support' do
+    erb :support
+  end
+
   get '/oauth' do
     if params['code']
 
