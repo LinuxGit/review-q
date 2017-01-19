@@ -9,7 +9,7 @@ class User < ActiveRecord::Base
 
   def full_name
     if first_name
-      first_name + " " + last_name
+      first_name + " " + last_name.to_s
     else
       slack_username
     end
