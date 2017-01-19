@@ -22,14 +22,18 @@ class EventWorker
           when /^<@#{@team.bot_slack_id}> add/
             add_item(event, event.text)
 
-          when /^<@#{@team.bot_slack_id}> list/
-            channel = Channel.find_by(slack_id: event.channel)
-
-            if !channel
-              channel = @team.create_channel_from_event(event)
+          when /^add/
+            if event.channel[0] == 'D'
+              add_item(event, event.text)
             end
 
-            channel.send_items_list("0")
+          when /^<@#{@team.bot_slack_id}> list/
+            list_items(event)
+
+          when /^list/
+            if event.channel[0] == 'D'
+              list_items(event)
+            end
 
           when /^<@#{@team.bot_slack_id}> help/
             Bot.send_help_message(@team.bot_token, event.channel)
@@ -37,10 +41,11 @@ class EventWorker
           when /<@#{@team.bot_slack_id}>/
             add_item(event, event.text,  vague: true)
 
-          when 'help', 'list', 'add', 'hi', 'hello'
+          when 'help', 'hi', 'hello'
             if event.channel[0] == 'D'
               Bot.send_help_message(@team.bot_token, event.channel)
             end
+
           else
             p "Message not related to Review Q"
           end
@@ -68,5 +73,15 @@ class EventWorker
     else
       item.channel.send_summary_message(pre_message: "Item added! :white_check_mark:\nThere are now ")
     end
+  end
+
+  def self.list_items(event)
+    channel = Channel.find_by(slack_id: event.channel)
+
+    if !channel
+      channel = @team.create_channel_from_event(event)
+    end
+
+    channel.send_items_list("0")
   end
 end

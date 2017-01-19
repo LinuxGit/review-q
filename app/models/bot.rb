@@ -23,7 +23,8 @@ class Bot
     options = {
       token: token,
       text: help_message,
-      channel: channel
+      channel: channel,
+      mrkdwn: true
     }
 
     res = RestClient.post 'https://slack.com/api/chat.postMessage', options
@@ -32,15 +33,18 @@ class Bot
 
   def self.help_message
     <<~HEREDOC
-    Review Q is a way to manage a queue of work within the context of a channel. For example, a legal team might queue up messages requesting them to review contracts or a software development team might queue up Pull Requests that need to be reviewed.
+    *ReviewQ lets you queue up messages in a channel that need to be reviewed and dealt with*
 
-    To add a message to the queue for a channel just say `@review-q add [text you want to add]`.
+     ReviewQ is a way to manage a queue of work within the context of a channel. For example, a legal team might queue up messages requesting them to review contracts. Software development team might queue up Pull Requests that need to be reviewed.
 
-    You can view your review queue at any time by saying `@review-q list`. From the list you can mark items as complete.
+      *Add items to the queue easily*
+      - Mention *@reviewq* in the channel and tell it what you want queued up: `@reviewq add [text you want to add]`
+      - Add a file to the queue by leaving a comment that mentioned *@reviewq*
+      - <https://get.slack.help/hc/en-us/articles/203274767-Share-messages-in-Slack|Share a message> and mention *@reviewq* to add the original message to the queue.
 
-    We recommend using Slack's share message feature to take messages from the channel and add them to the queue (with some additional context for the person triaging the list).
+      View your review queue at any time by saying `@reviewq list`. When you mark items in the queue as complete, we'll notify the requestor to let them know it's done.
 
-    If you share a message and only say `@review-q add`, we'll automatically add just the text from the shared message to the queue.
+      Learn more at https://www.reviewqbot.com
     HEREDOC
 
   end
