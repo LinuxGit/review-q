@@ -106,7 +106,7 @@ class Channel < ActiveRecord::Base
     i = reverse ? items.open.reverse : items.open
 
     attachments = i[first..last].inject([]) { |a, i| a << {
-      author_name: i.user.first_name + " " + i.user.last_name,
+      author_name: i.user.full_name,
       author_icon: i.user.avatar_24,
       color: SECONDARY_COLOR,
       text: i.message,

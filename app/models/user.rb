@@ -7,6 +7,14 @@ class User < ActiveRecord::Base
 
   before_validation :fetch_missing_info
 
+  def full_name
+    if first_name
+      first_name + " " + last_name
+    else
+      slack_username
+    end
+  end
+
   def fetch_missing_info
     if slack_id.blank?
       options = {token: team.bot_token}
@@ -30,7 +38,7 @@ class User < ActiveRecord::Base
       if parsed_res["ok"]
         self.slack_username = parsed_res["user"]["name"]
         self.avatar_24  = parsed_res["user"]["profile"]["image_24"]
-        self.first_name = parsed_res["user"]["profile"]["first_name"]
+        self.first_name = parsed_res["user"]["profile"]["first_name"] || parsed_res["user"]["name"]
         self.last_name  = parsed_res["user"]["profile"]["last_name"]
       end
     end
