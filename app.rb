@@ -80,7 +80,8 @@ class MyApp < Sinatra::Base
         Bot.send_error_message(data.response_url)
       end
     else
-      Bot.async_button_processing(body_arr[0][1])
+      #Bot.async_button_processing(body_arr[0][1])
+      ButtonWorker.perform(body_arr[0][1])
     end
 
     return 200
