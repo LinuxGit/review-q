@@ -13,6 +13,7 @@ run Rack::URLMap.new \
 
 Raven.configure do |config|
   config.dsn = ENV["SENTRY_URL"]
+  config.environments = %w[ production staging ]
 end
 
 use Raven::Rack
