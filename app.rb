@@ -11,6 +11,20 @@ class MyApp < Sinatra::Base
   set :public_folder, 'public'
   ActiveRecord::Base.establish_connection(ENV['DATABASE_URL'] || 'postgres://localhost/review-q_dev')
 
+  helpers do
+    def protected!
+      return if authorized?
+      headers['WWW-Authenticate'] = 'Basic realm="Restricted Area"'
+      halt 401, "Not authorized\n"
+    end
+
+    def authorized?
+      @auth ||=  Rack::Auth::Basic::Request.new(request.env)
+      @auth.provided? and @auth.basic? and @auth.credentials and
+        @auth.credentials == [ENV['RESQUE_WEB_HTTP_BASIC_AUTH_USER'], ENV['RESQUE_WEB_HTTP_BASIC_AUTH_PASSWORD']]
+    end
+  end
+
   get '/' do
     erb :index
   end
@@ -25,6 +39,14 @@ class MyApp < Sinatra::Base
 
   get '/support' do
     erb :support
+  end
+
+  get '/admin' do
+    protected!
+    @team_names = Team.all.map(&:name)
+    @open_items = Item.all.open
+    @completed_items = Item.where(complete: true)
+    erb :admin
   end
 
   get '/oauth' do

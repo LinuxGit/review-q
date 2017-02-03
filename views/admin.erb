@@ -1,0 +1,13 @@
+<h1>Admin Stats</h1>
+<h2>Teams</h2>
+<h3>Count: <%= @team_names.count %></h3>
+<h3>Names:</h3>
+<ul>
+<% @team_names.each do |name| %>
+  <li><%= name %></li>
+<% end %>
+</ul>
+
+<h2>Items</h2>
+<h3>Open count: <%= @open_items.count %></h3>
+<h3>Completed count: <%= @completed_items.count %></h3>
